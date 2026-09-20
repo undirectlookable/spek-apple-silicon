@@ -137,11 +137,15 @@ for lang in $LANGUAGES; do
     mkdir -p "$APP/Contents/Resources/${lang}.lproj"
     cp -v "$SPEK_SRC/po/${lang}.gmo" "$APP/Contents/Resources/${lang}.lproj/spek.mo"
     copied_wx=0
+    # wxstd.mo is a literal path (no glob), so always test -f. nullglob only
+    # hides missing wxstd-*.mo matches.
     shopt -s nullglob
     for mo in "$HOMEBREW_PREFIX/share/locale/$lang/LC_MESSAGES"/wxstd-*.mo \
               "$HOMEBREW_PREFIX/share/locale/$lang/LC_MESSAGES/wxstd.mo"; do
-        cp -v "$mo" "$APP/Contents/Resources/${lang}.lproj/"
-        copied_wx=1
+        if [ -f "$mo" ]; then
+            cp -v "$mo" "$APP/Contents/Resources/${lang}.lproj/"
+            copied_wx=1
+        fi
     done
     shopt -u nullglob
     if [ "$copied_wx" -eq 0 ]; then
