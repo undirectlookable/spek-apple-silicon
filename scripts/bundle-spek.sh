@@ -5,8 +5,6 @@
 
 set -euo pipefail
 
-LANGUAGES="bs ca cs da de el eo es fi fr gl he hr hu id it ja ko lv nb nl nn pl pt_BR ru sk sr@latin sv th tr uk vi zh_CN zh_TW"
-
 usage() {
     echo "Usage: $0 <spek-source-dir>" >&2
     exit 1
@@ -133,12 +131,17 @@ if [ -d "$SPEK_SRC/lic" ]; then
     cp "$SPEK_SRC/lic/"* "$APP/Contents/Resources/lic/"
 fi
 
-for lang in $LANGUAGES; do
+# Copy whatever catalogs this tag actually built (v0.8.5 has id.po but it is
+# not in po/LINGUAS, so id.gmo is never generated).
+shopt -s nullglob
+gmos=("$SPEK_SRC"/po/*.gmo)
+shopt -u nullglob
+for gmo in "${gmos[@]}"; do
+    lang="$(basename "$gmo" .gmo)"
     mkdir -p "$APP/Contents/Resources/${lang}.lproj"
-    cp -v "$SPEK_SRC/po/${lang}.gmo" "$APP/Contents/Resources/${lang}.lproj/spek.mo"
+    cp -v "$gmo" "$APP/Contents/Resources/${lang}.lproj/spek.mo"
     copied_wx=0
-    # wxstd.mo is a literal path (no glob), so always test -f. nullglob only
-    # hides missing wxstd-*.mo matches.
+    # wxstd.mo is a literal path (no glob), so always test -f.
     shopt -s nullglob
     for mo in "$HOMEBREW_PREFIX/share/locale/$lang/LC_MESSAGES"/wxstd-*.mo \
               "$HOMEBREW_PREFIX/share/locale/$lang/LC_MESSAGES/wxstd.mo"; do
