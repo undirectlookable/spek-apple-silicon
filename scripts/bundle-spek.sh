@@ -117,11 +117,21 @@ fi
 cp "$OSX_DIR/Info.plist" "$APP/Contents/"
 cp "$OSX_DIR/Spek.icns" "$APP/Contents/Resources/"
 cp "$OSX_DIR/"*.png "$APP/Contents/Resources/"
-cp "$SPEK_SRC/CREDITS.md" "$APP/Contents/Resources/"
-cp "$SPEK_SRC/LICENSE" "$APP/Contents/Resources/"
-cp "$SPEK_SRC/README.md" "$APP/Contents/Resources/"
-mkdir "$APP/Contents/Resources/lic"
-cp "$SPEK_SRC/lic/"* "$APP/Contents/Resources/lic/"
+# Upstream file names vary by tag (v0.8.5 has LICENCE.md, no CREDITS.md).
+copy_if_present() {
+    local src="$1"
+    if [ -f "$src" ]; then
+        cp "$src" "$APP/Contents/Resources/"
+    fi
+}
+copy_if_present "$SPEK_SRC/CREDITS.md"
+copy_if_present "$SPEK_SRC/LICENSE"
+copy_if_present "$SPEK_SRC/LICENCE.md"
+copy_if_present "$SPEK_SRC/README.md"
+if [ -d "$SPEK_SRC/lic" ]; then
+    mkdir "$APP/Contents/Resources/lic"
+    cp "$SPEK_SRC/lic/"* "$APP/Contents/Resources/lic/"
+fi
 
 for lang in $LANGUAGES; do
     mkdir -p "$APP/Contents/Resources/${lang}.lproj"
