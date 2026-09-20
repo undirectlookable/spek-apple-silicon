@@ -1,0 +1,18 @@
+Copyright notice
+================
+
+This repository is an unofficial Apple Silicon build pipeline for Spek
+(https://github.com/alexkay/spek). It is not affiliated with upstream.
+
+Spek (the application) is copyright Alexander Kojevnikov and contributors,
+licensed under the GNU General Public License v3.0 or later. See the
+upstream LICENSE file: https://github.com/alexkay/spek/blob/master/LICENSE
+
+Any Spek.app binary or zip attached to releases of THIS repository is a
+compilation of that upstream source. Copyright of Spek and of those
+release artifacts belongs to the upstream authors. This repository only
+contains build scripts and produces a compilation; it does not claim
+ownership of Spek.
+
+The build scripts and documentation in this repository are licensed under
+the MIT License (see LICENSE).

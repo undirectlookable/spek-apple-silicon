@@ -1,0 +1,110 @@
+# Unofficial Apple Silicon build of Spek (https://github.com/alexkay/spek).
+# Copyright of Spek and of the published binaries belongs to Alexander
+# Kojevnikov and contributors (GPL-3.0-or-later). This workflow only clones
+# an upstream tag, compiles it, and attaches a zip to a release of THIS repo.
+
+name: Release Apple Silicon
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Upstream alexkay/spek git tag (e.g. v0.8.5)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      UPSTREAM_REPO: alexkay/spek
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: "1"
+      MACOSX_DEPLOYMENT_TARGET: "10.15"
+    steps:
+      - name: Checkout build scripts
+        uses: actions/checkout@v4
+
+      - name: Confirm Apple Silicon
+        run: test "$(uname -m)" = arm64
+
+      - name: Normalize upstream tag
+        id: tag
+        run: |
+          raw="${{ inputs.version }}"
+          raw="${raw#refs/tags/}"
+          if [[ ! "$raw" =~ ^v?[0-9] ]]; then
+            echo "Invalid version: $raw" >&2
+            exit 1
+          fi
+          if [[ "$raw" != v* ]]; then
+            raw="v$raw"
+          fi
+          echo "name=$raw" >> "$GITHUB_OUTPUT"
+          echo "Using upstream tag $raw"
+
+      - name: Install Homebrew dependencies
+        run: |
+          brew install autoconf automake libtool pkgconf gettext ffmpeg wxwidgets
+          echo "$(brew --prefix gettext)/bin" >> "$GITHUB_PATH"
+
+      - name: Clone upstream Spek
+        run: |
+          git clone --depth 1 --branch "${{ steps.tag.outputs.name }}" \
+            "https://github.com/${UPSTREAM_REPO}.git" upstream
+
+      - name: Apply FFmpeg 8 compatibility patch
+        run: |
+          # Homebrew formula applies the same commit (PR alexkay/spek#338).
+          if grep -q 'libavutil/tx.h' upstream/src/spek-fft.cc; then
+            echo "Upstream already uses libavutil/tx.h; skipping patch"
+          else
+            git -C upstream apply "$GITHUB_WORKSPACE/patches/ffmpeg8-fft.patch"
+          fi
+
+      - name: Build and zip Spek.app
+        run: ./scripts/bundle-spek.sh "$GITHUB_WORKSPACE/upstream"
+
+      - name: Verify arm64 bundle
+        run: |
+          BIN=dist/Spek.app/Contents/MacOS/Spek
+          file "$BIN"
+          lipo -archs "$BIN" | grep -qx arm64
+          ls -lh dist/spek-*-macos-arm64.zip
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: spek-macos-arm64
+          path: dist/spek-*-macos-arm64.zip
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.name }}
+        run: |
+          ZIP=(dist/spek-*-macos-arm64.zip)
+          VER="${TAG#v}"
+          NOTES="$(cat <<EOF
+          Unofficial Apple Silicon (arm64) build of [Spek](https://github.com/alexkay/spek) \`${TAG}\`.
+
+          **Copyright of Spek and of this binary belongs to Alexander Kojevnikov and contributors.** Licensed under the GNU GPL v3.0 or later. This repository only compiled the upstream source; it is not affiliated with upstream.
+
+          - Source: https://github.com/alexkay/spek/tree/${TAG}
+          - Artifact: \`spek-${VER}-macos-arm64.zip\` (\`Spek.app\`)
+          - Ad-hoc signed, not notarized. If Gatekeeper blocks the app, right-click Spek.app and choose Open.
+          - Requires macOS 10.15 or later.
+
+          See NOTICE in this repository.
+          EOF
+          )"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${ZIP[@]}" --clobber
+          else
+            gh release create "$TAG" "${ZIP[@]}" \
+              --title "Spek ${VER} for Apple Silicon" \
+              --notes "$NOTES"
+          fi

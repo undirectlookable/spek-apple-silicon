@@ -1,0 +1,4 @@
+/dist/
+/upstream/
+*.zip
+.DS_Store
