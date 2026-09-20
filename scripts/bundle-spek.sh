@@ -66,8 +66,12 @@ if [ "${#extra_aclocal[@]}" -gt 0 ]; then
 fi
 shopt -u nullglob
 
-export CPPFLAGS="-I$GETTEXT_PREFIX/include ${CPPFLAGS:-}"
-export LDFLAGS="-L$GETTEXT_PREFIX/lib -Wl,-headerpad_max_install_names ${LDFLAGS:-}"
+# Homebrew bottles live under $(brew --prefix), which is not on Apple clang's
+# default include path. Upstream GUI objects include libavutil/mem.h via
+# spek-fft.h without AVUTIL_CFLAGS; Homebrew's formula injects these flags.
+export PKG_CONFIG_PATH="$HOMEBREW_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export CPPFLAGS="-I$HOMEBREW_PREFIX/include -I$GETTEXT_PREFIX/include ${CPPFLAGS:-}"
+export LDFLAGS="-L$HOMEBREW_PREFIX/lib -L$GETTEXT_PREFIX/lib -Wl,-headerpad_max_install_names ${LDFLAGS:-}"
 
 cd "$SPEK_SRC"
 rm -f src/spek
